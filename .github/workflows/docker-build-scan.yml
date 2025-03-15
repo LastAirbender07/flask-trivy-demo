@@ -21,24 +21,27 @@ jobs:
       - name: Log in to GitHub Container Registry
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
+      - name: Set Image Name
+        id: vars
+        run: |
+          IMAGE_NAME=ghcr.io/${{ github.repository_owner }}/flask-trivy-demo:${{ github.sha }}
+          IMAGE_NAME_LC=$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
+          echo "image_name_lc=$IMAGE_NAME_LC" >> $GITHUB_OUTPUT
+
       - name: Build Docker Image
         run: |
-          IMAGE_NAME=ghcr.io/${{ github.repository_owner }}/flask-trivy-demo:${{ github.sha }}
-          IMAGE_NAME_LC=$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
-          echo "Building Docker Image: $IMAGE_NAME_LC"
-          docker build -t "$IMAGE_NAME_LC" .
+          echo "Building Docker Image: ${{ steps.vars.outputs.image_name_lc }}"
+          docker build -t "${{ steps.vars.outputs.image_name_lc }}" .
 
-      - name: Pusaddh Docker Image
+      - name: Push the Docker Image
         run: |
-          IMAGE_NAME=ghcr.io/${{ github.repository_owner }}/flask-trivy-demo:${{ github.sha }}
-          IMAGE_NAME_LC=$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
-          echo "Pushing Docker Image: $IMAGE_NAME_LC"
-          docker push "$IMAGE_NAME_LC"
+          echo "Pushing Docker Image: ${{ steps.vars.outputs.image_name_lc }}"
+          docker push "${{ steps.vars.outputs.image_name_lc }}"
 
       - name: Scan Docker Image using Trivy
         uses: aquasecurity/trivy-action@0.28.0
         with:
-          image-ref: 'ghcr.io/${{ github.repository_owner }}/flask-trivy-demo:${{ github.sha }}'
+          image-ref: '${{ steps.vars.outputs.image_name_lc }}'
           format: 'table'
           exit-code: '0'
           ignore-unfixed: true
