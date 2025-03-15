@@ -6,6 +6,10 @@ on:
       - main
   pull_request:
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -24,7 +28,7 @@ jobs:
           echo "Building Docker Image: $IMAGE_NAME_LC"
           docker build -t "$IMAGE_NAME_LC" .
 
-      - name: Push Docker Image
+      - name: Pusaddh Docker Image
         run: |
           IMAGE_NAME=ghcr.io/${{ github.repository_owner }}/flask-trivy-demo:${{ github.sha }}
           IMAGE_NAME_LC=$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
