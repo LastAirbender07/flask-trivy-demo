@@ -18,10 +18,18 @@ jobs:
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
       - name: Build Docker Image
-        run: docker build -t ghcr.io/${{ github.repository_owner }}/flask-trivy-demo:${{ github.sha }} .
+        run: |
+          IMAGE_NAME=ghcr.io/${{ github.repository_owner }}/flask-trivy-demo:${{ github.sha }}
+          IMAGE_NAME_LC=$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
+          echo "Building Docker Image: $IMAGE_NAME_LC"
+          docker build -t "$IMAGE_NAME_LC" .
 
       - name: Push Docker Image
-        run: docker push ghcr.io/${{ github.repository_owner }}/flask-trivy-demo:${{ github.sha }}
+        run: |
+          IMAGE_NAME=ghcr.io/${{ github.repository_owner }}/flask-trivy-demo:${{ github.sha }}
+          IMAGE_NAME_LC=$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
+          echo "Pushing Docker Image: $IMAGE_NAME_LC"
+          docker push "$IMAGE_NAME_LC"
 
       - name: Scan Docker Image using Trivy
         uses: aquasecurity/trivy-action@0.28.0
