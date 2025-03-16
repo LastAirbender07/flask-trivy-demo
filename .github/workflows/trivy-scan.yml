@@ -1,0 +1,46 @@
+# .github/workflows/trivy-scan.yml
+
+name: Trivy Scan Docker Image
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Build and Push Docker Image"]
+    types:
+      - completed
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set Image Name
+        id: vars
+        run: |
+          IMAGE_NAME=ghcr.io/${{ github.repository_owner }}/flask-trivy-demo:${{ github.sha }}
+          IMAGE_NAME_LC=$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
+          echo "image_name_lc=$IMAGE_NAME_LC" >> $GITHUB_OUTPUT
+
+      - name: Pull Docker Image
+        run: docker pull "${{ steps.vars.outputs.image_name_lc }}"
+
+      - name: Trivy Scan and Save Report
+        run: |
+          trivy image \
+            --ignore-unfixed \
+            --vuln-type os,library \
+            --severity CRITICAL,HIGH \
+            --format table \
+            "${{ steps.vars.outputs.image_name_lc }}" > trivy-report.txt
+
+      - name: Upload Trivy Report Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-report
+          path: trivy-report.txt
