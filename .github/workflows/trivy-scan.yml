@@ -1,5 +1,3 @@
-# .github/workflows/trivy-scan.yml
-
 name: Trivy Scan and Handle Issues
 
 on:
@@ -36,7 +34,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y wget apt-transport-https gnupg lsb-release
           wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
-          echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+          echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/trivy.list
           sudo apt-get update
           sudo apt-get install -y trivy
 
@@ -73,6 +71,7 @@ jobs:
             echo "vuln_found=true" >> $GITHUB_OUTPUT
           else
             echo "vuln_found=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Prepare Markdown Issue
         if: steps.check_vuln.outputs.vuln_found == 'true'
