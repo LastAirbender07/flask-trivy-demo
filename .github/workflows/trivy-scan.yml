@@ -1,6 +1,6 @@
 # .github/workflows/trivy-scan.yml
 
-name: Trivy Scan Docker Image
+name: Trivy Scan and Handle Issues
 
 on:
   workflow_dispatch:
@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: read
+  issues: write  # Required for creating/updating issues
 
 jobs:
   scan:
@@ -53,3 +54,55 @@ jobs:
         with:
           name: trivy-report
           path: trivy-report.txt
+
+  handle-issues:
+    runs-on: ubuntu-latest
+    needs: scan
+
+    steps:
+      - name: Download Trivy Report Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: trivy-report
+          path: ./artifacts
+
+      - name: Check for Critical/High Vulnerabilities
+        id: check_vuln
+        run: |
+          if grep -qE "CRITICAL|HIGH" ./artifacts/trivy-report.txt; then
+            echo "vuln_found=true" >> $GITHUB_OUTPUT
+          else
+            echo "vuln_found=false" >> $GITHUB_OUTPUT
+
+      - name: Prepare Markdown Issue
+        if: steps.check_vuln.outputs.vuln_found == 'true'
+        run: |
+          echo "## 🔐 Trivy Security Scan Report" > issue.md
+          echo "**Branch**: \`${{ github.ref_name }}\`" >> issue.md
+          echo "**Commit**: \`${{ github.sha }}\`" >> issue.md
+          echo "" >> issue.md
+          echo "**Vulnerability Report:**" >> issue.md
+          echo '```' >> issue.md
+          cat ./artifacts/trivy-report.txt >> issue.md
+          echo '```' >> issue.md
+
+      - name: Close Old Trivy Issues
+        if: steps.check_vuln.outputs.vuln_found == 'true'
+        run: |
+          gh auth login --with-token <<< "${{ secrets.GITHUB_TOKEN }}"
+          OLD_ISSUE_NUMS=$(gh issue list --state open --search "Trivy Security Scan Report" --json number,title | jq -r '.[] | select(.title | test("Trivy Security Scan Report")) | .number')
+          for ISSUE_NUM in $OLD_ISSUE_NUMS; do
+            gh issue close "$ISSUE_NUM" --reason completed
+          done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create New GitHub Issue
+        if: steps.check_vuln.outputs.vuln_found == 'true'
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: "Trivy Security Scan Report - ${{ github.ref_name }} - ${{ github.sha }}"
+          content-filepath: issue.md
+          labels: |
+            security
+            automated issue
