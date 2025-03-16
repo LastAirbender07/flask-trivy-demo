@@ -88,7 +88,6 @@ jobs:
       - name: Close Old Trivy Issues
         if: steps.check_vuln.outputs.vuln_found == 'true'
         run: |
-          gh auth login --with-token <<< "${{ secrets.GITHUB_TOKEN }}"
           OLD_ISSUE_NUMS=$(gh issue list --state open --search "Trivy Security Scan Report" --json number,title | jq -r '.[] | select(.title | test("Trivy Security Scan Report")) | .number')
           for ISSUE_NUM in $OLD_ISSUE_NUMS; do
             gh issue close "$ISSUE_NUM" --reason completed
